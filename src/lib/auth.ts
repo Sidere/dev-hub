@@ -1,21 +1,13 @@
-/**
- * Auth utilities for JWT token management.
- * 
- * SECURITY NOTE: This Dev Hub uses localStorage for JWT storage as a fallback.
- * This application is restricted to internal technical users only (DEV / ADMIN_TECH roles).
- * When the backend supports HTTP-only cookies, migrate to that approach.
- */
-
 export interface User {
   id: string;
   name: string;
   email: string;
-  role: "DEV" | "ADMIN_TECH" | "ADMIN" | "USER";
+  role: "DEV" | "USER";
 }
 
 export interface AuthToken {
-  token: string;
-  expiresAt: number; // unix timestamp in ms
+  accessToken: string;
+  expiresAt: number;
 }
 
 const TOKEN_KEY = "devhub_token";
@@ -24,7 +16,7 @@ const USER_KEY = "devhub_user";
 export function storeAuth(token: string, user: User): void {
   const payload = parseJwtPayload(token);
   const authToken: AuthToken = {
-    token,
+    accessToken: token,
     expiresAt: payload?.exp ? payload.exp * 1000 : Date.now() + 3600000,
   };
   localStorage.setItem(TOKEN_KEY, JSON.stringify(authToken));
@@ -54,6 +46,7 @@ export function getStoredUser(): User | null {
 export function clearAuth(): void {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
 }
 
 export function isTokenExpired(token: AuthToken): boolean {
@@ -65,10 +58,15 @@ export function getTokenRemainingMs(token: AuthToken): number {
 }
 
 export function isTechnicalRole(role: string): boolean {
-  return role === "DEV" || role === "ADMIN_TECH";
+  return role === "DEV"
 }
 
-function parseJwtPayload(token: string): Record<string, any> | null {
+interface JwtPayload {
+  exp?: number;
+  [key: string]: string | number | undefined;
+}
+
+function parseJwtPayload(token: string): JwtPayload | null {
   try {
     const parts = token.split(".");
     if (parts.length !== 3) return null;
@@ -76,4 +74,19 @@ function parseJwtPayload(token: string): Record<string, any> | null {
   } catch {
     return null;
   }
+
+}
+
+const REFRESH_TOKEN_KEY = 'devhub_refresh_token';
+
+export function storeRefreshToken(token: string): void {
+  localStorage.setItem(REFRESH_TOKEN_KEY, token);
+}
+
+export function getStoredRefreshToken(): string | null {
+  return localStorage.getItem(REFRESH_TOKEN_KEY);
+}
+
+export function clearRefreshToken(): void {
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
 }

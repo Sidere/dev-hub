@@ -1,7 +1,19 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
-import { User, AuthToken, getStoredToken, getStoredUser, storeAuth, clearAuth, isTokenExpired, getTokenRemainingMs, isTechnicalRole } from "@/lib/auth";
-import { MOCK_USER, getMockToken } from "@/lib/mock-data";
+import {
+  User,
+  AuthToken,
+  getStoredToken,
+  getStoredUser,
+  storeAuth,
+  clearAuth,
+  isTokenExpired,
+  getTokenRemainingMs,
+  isTechnicalRole,
+  storeRefreshToken,
+  getStoredRefreshToken
+} from "@/lib/auth";
 import { toast } from "sonner";
+import { apiClient } from "@/lib/api-client";
 
 interface AuthContextType {
   user: User | null;
@@ -11,9 +23,19 @@ interface AuthContextType {
   logout: () => void;
 }
 
-const AuthContext = createContext<AuthContextType | null>(null);
+interface LoginResponse {
+  accessToken: string;
+  refreshToken: string;
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    role: "DEV" | "USER";
+  };
+}
 
-const TOKEN_WARNING_MS = 5 * 60 * 1000; // 5 minutes before expiry
+const AuthContext = createContext<AuthContextType | null>(null);
+const TOKEN_WARNING_MS = 5 * 60 * 1000;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -21,11 +43,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const warningTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const logoutTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
-  const logout = useCallback(() => {
-    clearAuth();
-    setUser(null);
-    if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
-    if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
+  const logout = useCallback(async () => {
+    try {
+      const refreshToken = getStoredRefreshToken();
+      if (refreshToken) {
+        await apiClient.post('/auth/logout', { refreshToken }).catch(() => { });
+      }
+    } finally {
+      clearAuth();
+      setUser(null);
+      if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
+      if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
+    }
   }, []);
 
   const setupTokenTimers = useCallback((token: AuthToken) => {
@@ -33,18 +62,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
 
     const remaining = getTokenRemainingMs(token);
-    if (remaining <= 0) { logout(); return; }
+    if (remaining <= 0) {
+      logout();
+      return;
+    }
 
-    // Auto-logout timer
     logoutTimerRef.current = setTimeout(() => {
-      toast.error("Sessão expirada. Faça login novamente.", { duration: 5000 });
+      toast.error("Sessão expirada. Faça login novamente.");
       logout();
     }, remaining);
 
-    // Warning timer
     if (remaining > TOKEN_WARNING_MS) {
       warningTimerRef.current = setTimeout(() => {
-        toast.warning("Sua sessão expira em 5 minutos. Salve seu trabalho.", { duration: 10000 });
+        toast.warning("Sua sessão expira em 5 minutos.");
       }, remaining - TOKEN_WARNING_MS);
     }
   }, [logout]);
@@ -52,6 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const token = getStoredToken();
     const storedUser = getStoredUser();
+
     if (token && storedUser && !isTokenExpired(token) && isTechnicalRole(storedUser.role)) {
       setUser(storedUser);
       setupTokenTimers(token);
@@ -62,19 +93,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [setupTokenTimers]);
 
   const login = async (email: string, password: string) => {
-    // DEMO MODE: accept any login and use mock data
-    // In production, replace with real API call
-    await new Promise(r => setTimeout(r, 800));
+    const data = await apiClient.post<LoginResponse>('/auth/login', { email, password });
 
-    const mockUser = { ...MOCK_USER, email };
-    if (!isTechnicalRole(mockUser.role)) {
-      throw new Error("Acesso restrito a usuários técnicos (DEV / ADMIN_TECH).");
+    if (!isTechnicalRole(data.user.role)) {
+      throw new Error("Acesso restrito a usuários desenvolvedores.");
     }
 
-    storeAuth(getMockToken(), mockUser);
-    const token = getStoredToken()!;
-    setupTokenTimers(token);
-    setUser(mockUser);
+    storeAuth(data.accessToken, data.user);
+
+    if (data.refreshToken) {
+      storeRefreshToken(data.refreshToken);
+    }
+
+    const token = getStoredToken();
+    if (token) {
+      setupTokenTimers(token);
+    }
+
+    setUser(data.user);
+    toast.success(`Bem-vindo, ${data.user.name}`);
   };
 
   return (

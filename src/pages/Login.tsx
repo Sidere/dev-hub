@@ -22,8 +22,9 @@ export default function Login() {
     setLoading(true);
     try {
       await login(email, password);
-    } catch (err: any) {
-      setError(err.message || "Falha na autenticação.");
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Falha na autenticação.";
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -36,16 +37,16 @@ export default function Login() {
           <div className="flex items-center justify-center gap-2">
             <Terminal className="h-8 w-8 text-primary" />
             <div>
-              <CardTitle className="text-xl text-foreground">Aqui na Feira</CardTitle>
+              <CardTitle className="text-xl text-foreground">Coringa Devs</CardTitle>
               <CardDescription className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase">Dev Hub</CardDescription>
             </div>
           </div>
           <EnvironmentBadge environment={environment} size="md" />
           <p className="text-xs text-muted-foreground">
-            Acesso restrito a usuários técnicos (DEV / ADMIN_TECH).
+            Acesso restrito a palhaços.
             {/* localStorage notice */}
             <br />
-            <span className="text-[10px] opacity-60">Ambiente interno — tokens armazenados localmente.</span>
+            <span className="text-[10px] opacity-60">HAHAHAHA</span>
           </p>
         </CardHeader>
         <CardContent>
