@@ -113,7 +113,7 @@ export default function Dashboard() {
       const [logsRes, usuariosRes, healthRes] = await Promise.allSettled([
         apiClient.get<LogsResponse>("/logs?limit=10", true),
         apiClient.get<{ length: number }>("/users", true),
-        apiClient.get<HealthCheckResult[]>("/health/history", true),
+        apiClient.get<HealthCheckResult[]>("/health/latest", true),
       ]);
 
       if (logsRes.status === "fulfilled") {
@@ -255,7 +255,6 @@ export default function Dashboard() {
             <p className="text-sm text-muted-foreground text-center py-4">
               Nenhum dado de health check disponível ainda.
               <br />
-              <span className="text-xs opacity-60">Os dados aparecem após o Passo 5 (Health Check) ser implementado.</span>
             </p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -305,10 +304,10 @@ export default function Dashboard() {
                 >
                   <div
                     className={`mt-0.5 h-2 w-2 rounded-full shrink-0 ${log.level === "ERROR"
-                        ? "bg-destructive"
-                        : log.level === "WARN"
-                          ? "bg-warning"
-                          : "bg-accent"
+                      ? "bg-destructive"
+                      : log.level === "WARN"
+                        ? "bg-warning"
+                        : "bg-accent"
                       }`}
                   />
                   <div className="flex-1 min-w-0">
