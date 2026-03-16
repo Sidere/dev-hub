@@ -200,7 +200,12 @@ export default function Logs() {
                 className="bg-secondary border-border pr-8 font-mono text-xs"
               />
               {filtroTrace && (
-                <button onClick={() => setFiltroTrace("")} className="absolute right-2 top-2.5">
+                <button
+                  onClick={() => setFiltroTrace("")}
+                  className="absolute right-2 top-2.5 hover:opacity-70 transition-opacity"
+                  aria-label="Limpar filtro"
+                  title="Limpar filtro"
+                >
                   <X className="h-4 w-4 text-muted-foreground" />
                 </button>
               )}
