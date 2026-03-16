@@ -32,7 +32,7 @@ export function AppSidebar() {
       <div className="p-4 flex items-center gap-2 border-b border-border">
         <Terminal className="h-6 w-6 text-primary" />
         <div className="flex flex-col min-w-0">
-          <span className="text-sm font-bold text-foreground truncate">Aqui na Feira</span>
+          <span className="text-sm font-bold text-foreground truncate">Coringa Devs</span>
           <span className="text-[10px] font-mono text-muted-foreground">DEV HUB</span>
         </div>
         <EnvironmentBadge environment={environment} className="ml-auto" />
